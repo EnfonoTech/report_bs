@@ -70,20 +70,25 @@ frappe.listview_settings["Sales Invoice"] = {
                             fieldtype: "Link",
                             options: "Mode of Payment",
                             reqd: 1,
+                            get_query: function () {
+                                return {
+                                    query: "report_bs.api.mode_of_payment_query",
+                                    filters: { company: full_doc.company }
+                                };
+                            },
                             onchange: function () {
                                 let mode = d.get_value("mode_of_payment");
 
-                                if (mode && mode !== "Cash") {
-                                    d.set_df_property("ref_no", "reqd", 1);
-                                    d.set_df_property("ref_date", "reqd", 1);
-                                    d.set_df_property("ref_no", "hidden", 0);
-                                    d.set_df_property("ref_date", "hidden", 0);
-                                } else {
-                                    d.set_df_property("ref_no", "reqd", 0);
-                                    d.set_df_property("ref_date", "reqd", 0);
-                                    d.set_df_property("ref_no", "hidden", 1);
-                                    d.set_df_property("ref_date", "hidden", 1);
-                                }
+                                if (!mode) return;
+
+                                frappe.db.get_value("Mode of Payment", mode, "type").then(r => {
+                                    let is_cash = r.message && r.message.type === "Cash";
+
+                                    d.set_df_property("ref_no", "reqd", is_cash ? 0 : 1);
+                                    d.set_df_property("ref_date", "reqd", is_cash ? 0 : 1);
+                                    d.set_df_property("ref_no", "hidden", is_cash ? 1 : 0);
+                                    d.set_df_property("ref_date", "hidden", is_cash ? 1 : 0);
+                                });
                             }
                         },
                         {
