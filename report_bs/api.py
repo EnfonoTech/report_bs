@@ -70,6 +70,29 @@ def create_payment_entry(sales_invoice, company, customer, currency, outstanding
     return {"name": payment_entry.name}
 
 @frappe.whitelist()
+def mode_of_payment_query(doctype, txt, searchfield, start, page_len, filters):
+    """Only show Mode of Payment records that have an account linked for the given company"""
+    company = filters.get("company") if filters else None
+
+    if not company:
+        return []
+
+    return frappe.db.sql("""
+        SELECT mop.name
+        FROM `tabMode of Payment` mop
+        INNER JOIN `tabMode of Payment Account` mopa ON mopa.parent = mop.name
+        WHERE mopa.company = %(company)s
+            AND mop.name LIKE %(txt)s
+        ORDER BY mop.name
+        LIMIT %(page_len)s OFFSET %(start)s
+    """, {
+        "company": company,
+        "txt": "%{}%".format(txt),
+        "start": frappe.utils.cint(start),
+        "page_len": frappe.utils.cint(page_len)
+    })
+
+@frappe.whitelist()
 def get_payment_entry_info(invoice_name):
     """Return count of payment entries (and drafts) linked to a Sales Invoice"""
     try:

@@ -41,9 +41,26 @@ def get_columns():
     ]
 
 
+def get_system_generated_cr_dr_notes():
+    """Journal Entries for system generated Credit/Debit Notes"""
+    return frappe.get_all(
+        "Journal Entry",
+        filters={
+            "docstatus": 1,
+            "voucher_type": ["in", ["Credit Note", "Debit Note"]],
+            "is_system_generated": 1,
+        },
+        pluck="name",
+    )
+
+
 def get_data(filters):
+    voucher_no_not_in = None
+    if filters.get("ignore_cr_dr_notes"):
+        voucher_no_not_in = get_system_generated_cr_dr_notes()
+
     # Fetch opening balance before from_date
-    opening_balance = get_opening_balance(filters)
+    opening_balance = get_opening_balance(filters, voucher_no_not_in)
 
     conditions = [
         "party_type = 'Customer'",
@@ -57,6 +74,10 @@ def get_data(filters):
         "from_date": filters["from_date"],
         "to_date": filters["to_date"],
     }
+
+    if voucher_no_not_in:
+        conditions.append("voucher_no NOT IN %(voucher_no_not_in)s")
+        values["voucher_no_not_in"] = voucher_no_not_in
 
     gl_entries = frappe.db.sql(f"""
         SELECT
@@ -136,17 +157,27 @@ def get_data(filters):
     return data
 
 
-def get_opening_balance(filters):
+def get_opening_balance(filters, voucher_no_not_in=None):
     """Compute opening balance before from_date."""
-    result = frappe.db.sql("""
+    conditions = [
+        "party_type = 'Customer'",
+        "party = %(customer)s",
+        "posting_date < %(from_date)s"
+    ]
+
+    values = {"customer": filters["customer"], "from_date": filters["from_date"]}
+
+    if voucher_no_not_in:
+        conditions.append("voucher_no NOT IN %(voucher_no_not_in)s")
+        values["voucher_no_not_in"] = voucher_no_not_in
+
+    result = frappe.db.sql(f"""
         SELECT
             SUM(debit) - SUM(credit) AS balance
         FROM
             `tabGL Entry`
         WHERE
-            party_type = 'Customer'
-            AND party = %(customer)s
-            AND posting_date < %(from_date)s
-    """, {"customer": filters["customer"], "from_date": filters["from_date"]}, as_dict=True)
+            {" AND ".join(conditions)}
+    """, values, as_dict=True)
 
     return result[0].balance or 0
