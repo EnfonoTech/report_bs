@@ -44,7 +44,8 @@ app_license = "mit"
 
 # include js in doctype views
 doctype_js = {
-    "Payment Entry" : "public/js/payment_entry.js"
+    "Payment Entry" : "public/js/payment_entry.js",
+    "Journal Entry" : "public/js/journal_entry.js"
 }
 doctype_list_js = {"Sales Invoice": "public/js/sales_invoice_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -247,7 +248,11 @@ fixtures = [
         "dt": "Custom Field",
         "filters": [
             ["name", "in", [
-                "Payment Entry-custom_round_off_unallocated_amount"
+                "Payment Entry-custom_round_off_unallocated_amount",
+                "Account-custom_commission_account",
+                "Journal Entry Account-custom_is_commission_account",
+                "Journal Entry Account-custom_commission_customer",
+                "Journal Entry Account-custom_commission_sales_invoice"
             ]]
         ]
     }
